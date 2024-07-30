@@ -1,0 +1,73 @@
+ml NiaEnv/2019b gcc/9.2.0 openmpi/4.0.3 mkl/2019u4 plink/1.90b6
+plink
+
+# Copy genotype data files
+cp /project/o/oespinga/oespinga/OAI/Geno/QC_v7/OAI_b37.bim /scratch/o/oespinga/mirandab/GWAS_Logtrans_files/
+cp /project/o/oespinga/oespinga/OAI/Geno/QC_v7/OAI_b37.bed /scratch/o/oespinga/mirandab/GWAS_Logtrans_files/
+cp /project/o/oespinga/oespinga/OAI/Geno/QC_v7/OAI_b37.fam /scratch/o/oespinga/mirandab/GWAS_Logtrans_files/
+
+# phenotype and covariate data files: pheno.txt, covar.txt 
+
+# Set working directory
+cd /scratch/o/oespinga/mirandab/GWAS_Logtrans_files
+
+# Merge genotype and phenotype data
+plink --bfile OAI_b37 --pheno pheno.txt --pheno-name Log_AURC --make-bed --out geno_pheno_dat
+
+# Exclude individuals with a missing phenotype (coded as "-9")
+awk '{if ($6 == "-9") print $1, $2}' geno_pheno_dat.fam > na_list.txt
+
+# Get the merged data without missing phenotypes
+plink --bfile geno_pheno_dat --remove na_list.txt --make-bed --out geno_pheno_dat2
+
+# Calculate minor allele frequencies (MAF) before filtering
+plink --bfile geno_pheno_dat2 --freq --out maf_geno_pheno_dat2
+
+# Keep only SNPs with a Minor Allele Frequency (MAF) greater than 0.05
+plink --bfile geno_pheno_dat2 --maf 0.05 --make-bed --out clean_dat
+
+# Calculate minor allele frequencies (MAF) after filtering
+plink --bfile clean_dat --freq --out maf_clean_dat
+
+#################################################################
+
+### Association analyses ###
+# For the association analyses we use the data clean_dat and file covar.txt
+
+### association
+plink --bfile clean_dat --assoc --out assoc_results
+
+# Remove missing values
+awk '!/'NA'/' assoc_results.qassoc > assoc_2.results.qassoc
+
+# sort by p-values from lowest to highest
+#sort -k9,9g assoc_2.results.qassoc > sortedP_assoc_2.results.qassoc
+
+### linear regression
+# Use PC1, V00COHORT(cohort), BMI, AGE, SEX as covariates in this linear regression model
+plink --bfile clean_dat --covar covar.txt --linear hide-covar --out linear_results
+
+# Remove NAs
+awk '!/'NA'/' linear_results.assoc.linear > linear_results.assoc_2.linear
+
+# sort by p-values 
+#sort -k9,9g linear_results.assoc_2.linear > sortedP_linear_results.assoc_2.linear
+
+
+#################################################################
+
+### Testing ###
+
+# Use Bonferroni corrected p-value (adjust)
+plink --bfile clean_dat -assoc --adjust --out adjusted_assoc_results
+
+# Remove NAs
+awk '!/'NA'/' adjusted_assoc_results.qassoc > adjusted_assoc_2.results.qassoc
+
+# sort by p-values
+#sort -k9,9g adjusted_assoc_2.results.qassoc > sortedP_adjusted_assoc_2.results.qassoc
+
+
+
+
+

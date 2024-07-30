@@ -1,0 +1,36 @@
+### GWAS File Descriptions
+
+File location -- /scratch/o/oespinga/mirandab/GWAS_files
+
+
+## bfiles 
+
+geno_pheno_dat: original merged genotype and phenotype bfiles data.
+
+geno_pheno_dat2: merged genotype and phenotype bfiles data without any missing phenotypes.
+
+maf_geno_pheno_dat2: MAF for "geno_pheno_dat2".
+
+
+clean_dat: merged genotype and phenotype data with SNPs having a MAF > 0.05.
+
+maf_clean_dat: MAF for "clean_dat".
+
+
+## GWAS results
+
+assoc_results.qassoc: original association results 
+
+assoc_2.results.qassoc: association results without any NAs
+
+sortedP_assoc_2.results.qassoc: association results without NAs and sorted by p values
+
+
+linear_results.assoc.linear: original linear regression results
+
+linear_results.assoc_2.linear: linear results without any NAs 
+
+sortedP_linear_results.assoc_2.linear: linear results without NAs and sorted by p values
+
+
+

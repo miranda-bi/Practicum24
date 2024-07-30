@@ -1,0 +1,78 @@
+
+setwd("C:/Users/Miran/OneDrive/桌面/Practicum/AURC/TWAS_PC1/")
+
+load("Log_TWAS_AURC_v6_PC1_mashr.Rdata")
+
+# if (!require("BiocManager", quietly = TRUE))
+#   install.packages("BiocManager")
+# BiocManager::install("biomaRt")
+# BiocManager::install("org.Hs.eg.db")
+# BiocManager::install("SNPlocs.Hsapiens.dbSNP144.GRCh37")
+# BiocManager::install("TxDb.Hsapiens.UCSC.hg19.knownGene")
+# library(dplyr)
+# library(org.Hs.eg.db)
+# library(SNPlocs.Hsapiens.dbSNP144.GRCh37)
+# library(TxDb.Hsapiens.UCSC.hg19.knownGene)
+# library(snplist)
+
+library(biomaRt)
+
+# Initialize the use of the Ensembl database
+ensembl <- useMart("ensembl", dataset = "hsapiens_gene_ensembl")
+
+# Create a list of unique gene identifiers from your dataset
+gene_ids <- sub("\\..*$", "", Log_TWAS_v6$gene)
+Log_TWAS_v6$gene_ids <- gene_ids
+
+# Retrieve gene location information
+gene_locations <- getBM(attributes = c('ensembl_gene_id', 'chromosome_name', 'start_position', 'end_position'),
+                        filters = 'ensembl_gene_id', values = gene_ids, mart = ensembl)
+
+# Merge this location information back into your original dataset
+Log_TWAS_v6_res <- merge(Log_TWAS_v6, gene_locations, by.x = 'gene_ids', by.y = 'ensembl_gene_id')
+
+# get the base pair position
+Log_TWAS_v6_res$BP <- with(Log_TWAS_v6_res, (start_position + end_position)/2)
+Log_TWAS_v6_res$SNP <- paste0("SNP_", seq_len(nrow(Log_TWAS_v6_res))) # create dummy snp
+Log_TWAS_v6_res <-na.omit(Log_TWAS_v6_res) # remove nas
+
+library(qqman)
+
+# The Manhattan plot
+jpeg("Log_TWAS_Manhattan_Plot.jpeg")
+manhattan(Log_TWAS_v6_res, chr="chromosome_name", bp="BP", 
+          p="p.value", snp="SNP",
+          suggestiveline = -log10(4.17e-06),
+          genomewideline = FALSE,
+          main="Manhattan Plot for Log-linear Model for TWAS",
+          ylim=c(0, -log10(min(Log_TWAS_v6_res$p.value))+2),
+          xlab = "Chromosome",
+          ylab = "-log10(P-value)",
+          col = c("blue4", "orange3"),
+          cex.axis=1.2, cex.lab=1.2)
+dev.off()
+# change the suggestive sig p-value threshold to 0.05/#genes = 4.17e-06
+
+
+# QQ plot
+jpeg("Log_TWAS_QQ_Plot.jpeg")
+qq(Log_TWAS_v6_res$p.value, main = "Q-Q plot for Log-linear Model for TWAS",
+   cex.axis=1.2, cex.lab=1.2)
+dev.off()
+
+
+## LGC
+
+# observed chi-square statistics
+obs_chi <- qchisq(Log_TWAS_v6_res$p.value, df = 1, lower.tail = FALSE)
+
+# The median of the observed chi-square statistics
+median_obs <- median(obs_chi)
+
+# The median of the expected chi-square distribution with 1 degree of freedom under the null is 0.455
+median_exp <- qchisq(0.5, df = 1, lower.tail = FALSE)
+
+# Calculate the genomic control lambda
+lgc <- median_obs / median_exp
+
+lgc
